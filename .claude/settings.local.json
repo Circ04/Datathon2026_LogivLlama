@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import gzip, shutil; f_in = gzip.open(''Data/temp_downloads/part1.zip'', ''rb''); f_out = open(''Data/part1.parquet'', ''wb''); shutil.copyfileobj(f_in, f_out); f_in.close(); f_out.close(); print(''Extracted part1'')\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
