@@ -1,5 +1,9 @@
 gdown
 pandas
-duckdb
+polars
 plotly
 nbformat>=4.2.0
+ipykernel
+jupyterlab
+numpy
+pathlib

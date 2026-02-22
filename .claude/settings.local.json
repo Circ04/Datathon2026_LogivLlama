@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import gzip, shutil; f_in = gzip.open(''Data/temp_downloads/part1.zip'', ''rb''); f_out = open(''Data/part1.parquet'', ''wb''); shutil.copyfileobj(f_in, f_out); f_in.close(); f_out.close(); print(''Extracted part1'')\")"
+      "Bash(rm 01_explore_data.ipynb)",
+      "Bash(rm README_DATATHON.md)",
+      "Bash(git reset)",
+      "Bash(git clean -fd)",
+      "Bash(git add .gitignore \"Datathon Analysis.ipynb\" EDA.ipynb requirements.txt datathon_guide.ipynb)",
+      "Bash(git commit -m \"finally got df working, added first feature to fit, todo: more feature engineering, then start fitting models\")",
+      "Bash(git add .gitignore \"Datathon Analysis.ipynb\" EDA.ipynb requirements.txt)",
+      "Bash(git add -u)"
     ],
     "deny": [],
     "ask": []
