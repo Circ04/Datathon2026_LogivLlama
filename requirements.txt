@@ -1,1 +1,5 @@
 gdown
+pandas
+duckdb
+plotly
+nbformat>=4.2.0
