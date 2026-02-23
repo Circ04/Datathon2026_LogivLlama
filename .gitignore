@@ -8,3 +8,5 @@ dtenv/
 .venv/
 .vscode/
 nul
+datathon_analysis.ipynb
+explore.py

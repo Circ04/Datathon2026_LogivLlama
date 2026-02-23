@@ -8,7 +8,11 @@
       "Bash(git add .gitignore \"Datathon Analysis.ipynb\" EDA.ipynb requirements.txt datathon_guide.ipynb)",
       "Bash(git commit -m \"finally got df working, added first feature to fit, todo: more feature engineering, then start fitting models\")",
       "Bash(git add .gitignore \"Datathon Analysis.ipynb\" EDA.ipynb requirements.txt)",
-      "Bash(git add -u)"
+      "Bash(git add -u)",
+      "Bash(dir \"%APPDATA%\\Code\\User\\History\" /s /b)",
+      "Bash(findstr datathon_guide)",
+      "Bash(find \"$APPDATA/Code/User/History\" -name \"*datathon*\")",
+      "Bash(C:UsersAlexaAppDataLocalPythonbinpython.exe -m venv .venv)"
     ],
     "deny": [],
     "ask": []
