@@ -11,3 +11,5 @@ nul
 datathon_analysis.ipynb
 explore.py
 venv/
+data_splits
+*.parquet
