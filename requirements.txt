@@ -7,3 +7,7 @@ ipykernel
 jupyterlab
 numpy
 pathlib
+xgboost
+scikit-learn
+pyarrow
+matploblib
