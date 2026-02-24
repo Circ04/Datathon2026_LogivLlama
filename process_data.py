@@ -45,7 +45,7 @@ def process_data():
 
     # Step 1: Load data lazily
     print("\n[1/5] Loading training data (lazy mode)...")
-    df = pl.scan_parquet("Data/train-part/*.parquet")
+    df = pl.scan_parquet("Data/train-part-*/*.parquet")
 
     # Get basic stats without loading all data
     total_rows = df.select(pl.len()).collect().item()
