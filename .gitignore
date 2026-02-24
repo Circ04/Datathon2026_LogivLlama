@@ -10,3 +10,4 @@ dtenv/
 nul
 datathon_analysis.ipynb
 explore.py
+venv/
