@@ -2,6 +2,11 @@
 import polars as pl
 from sklearn.metrics import roc_auc_score
 from sklearn.ensemble import RandomForestClassifier
+
+import pandas as pd
+from sklearn.inspection import PartialDependenceDisplay
+import matplotlib.pyplot as plt
+
 #%%
 TRAIN_PATH = "train_preprocessed_100k.parquet"
 VAL_PATH   = "val_preprocessed_100k.parquet"
@@ -142,5 +147,29 @@ print("VAL baseline reward:", baseline)
 print("VAL IPS reward (RF greedy):", ips)
 print("Relative lift:", (ips - baseline) / baseline)
 
+
+# %% Lookg for feature importance to understand session completion further. 
+importances = pd.Series(
+    rf.feature_importances_,
+    index=X_train.columns
+).sort_values(ascending=False)
+
+print(importances.head(15))
+
+
+#%% Check if templates matter at all
+template_importance = importances[
+    importances.index.str.startswith("selected_template_")
+].sum()
+
+print("Total template importance:", template_importance)
+
+#%% Partial dependence: How does reward change with time since last notif
+PartialDependenceDisplay.from_estimator(
+    rf,
+    X_train,
+    ["time_since_last_notification_days"]
+)
+plt.show()
 
 # %%
