@@ -24,7 +24,8 @@ print("Val baseline:", val.select(pl.mean("session_end_completed")).item())
 #%% ---- Basic EDA and processing ----
 train.head(10)
 
-#%% fix hour_UTC
+#%% 
+# fix hour_UTC (not continuous 0 to 1)
 train = train.with_columns(
     ((pl.col("datetime") % 1) * 24)
         .floor()
@@ -66,12 +67,9 @@ assert train.columns == val.columns
 ## history_length: number of past exposures
 ## n_eligible: number of templates a user is able to receive at the moment
 
-## Add from history: length between template sent
 
-
-#%% Add history-based features in Polars 
-
-#%% **time_since_last_notification**: The number of days since the user received 
+#%% 
+# **time_since_last_notification**: The number of days since the user received 
 #                       their most recent notification (any template).
 
 
@@ -90,7 +88,8 @@ val = val.with_columns(
         return_dtype=pl.Float64
     ).alias("time_since_last_notification_days")
 )
-#%% **Template_freq_last_5**: The max count of any template in the last 5
+#%% 
+# **Template_freq_last_5**: The max count of any template in the last 5
 
 from collections import Counter
 
@@ -117,6 +116,28 @@ val = val.with_columns(
         ),
         return_dtype=pl.Int16
     ).alias("max_template_count_last_5")
+)
+
+
+#%% 
+# Recency (Added from Alexander): days since *selected_template* was last shown (min n_days for matching template)
+def _days_since_shown(row):
+    tmpl = row["selected_template"]
+    hist = row["history"]
+    if hist is None or len(hist) == 0:
+        return 999.0
+    matching = [float(h["n_days"]) for h in hist if h["template"] == tmpl]
+    return float(min(matching)) if matching else 999.0
+
+train = train.with_columns(
+    pl.struct(["selected_template", "history"])
+      .map_elements(_days_since_shown, return_dtype=pl.Float64)
+      .alias("days_since_shown")
+)
+val = val.with_columns(
+    pl.struct(["selected_template", "history"])
+      .map_elements(_days_since_shown, return_dtype=pl.Float64)
+      .alias("days_since_shown")
 )
 
 #%% 
