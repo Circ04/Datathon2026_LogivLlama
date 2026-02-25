@@ -10,11 +10,16 @@ from sklearn.metrics import roc_auc_score
  
 
 #%% 
-
-
-#%%
 TRAIN_PATH = "train_preprocessed_100k.parquet"
 VAL_PATH   = "val_preprocessed_100k.parquet"
 
+# If you've written a single giant parquet:
+TEST_FULL_PARQUET = "test.parquet"
+
+#%%
+
 train = pl.read_parquet(TRAIN_PATH)
 val   = pl.read_parquet(VAL_PATH)
+test  = pl.read_parquet(TEST_FULL_PARQUET)
+
+# %%
