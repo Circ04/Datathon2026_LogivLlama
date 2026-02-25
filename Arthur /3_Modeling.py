@@ -16,11 +16,31 @@ val   = pl.read_parquet(VAL_PATH)
 
 print(train.shape, val.shape)
 
+
+#%% Recency helper (Added from Alexander): days since *selected_template* was last shown (min n_days for matching template)
+SENTINEL_RECENCY = 999.0
+
+def _days_since_shown(row) -> float:
+    tmpl = row["selected_template"]
+    hist = row["history"]
+    if hist is None or len(hist) == 0:
+        return SENTINEL_RECENCY
+    matching = [float(h["n_days"]) for h in hist if h.get("template") == tmpl]
+    return float(min(matching)) if matching else SENTINEL_RECENCY
+
+def add_recency(df: pl.DataFrame, out_col: str = "recency") -> pl.DataFrame:
+    return df.with_columns(
+        pl.struct(["selected_template", "history"])
+          .map_elements(_days_since_shown, return_dtype=pl.Float64)
+          .alias(out_col)
+    )
+
 #%% Sanity check (should print [])
 needed = [
     "session_end_completed",
     "selected_template",
     "eligible_templates",
+    "history", # required for recency
     "n_eligible",
     "history_length",
     "hour_utc",
@@ -32,8 +52,15 @@ print([c for c in needed if c not in train.columns])
 #%% Sanity baseline reward
 print("train baseline:", train.select(pl.mean("session_end_completed")).item())
 print("val baseline:  ", val.select(pl.mean("session_end_completed")).item())
-#%%
+#%% Add recency
 
+train = add_recency(train, out_col="recency")
+val   = add_recency(val,   out_col="recency")
+
+# now you may drop history safely (logged tables)
+train = train.drop(["history"])
+val   = val.drop(["history"])
+#%%
 train.head(10)
 #%%
 # One-hot encode selected_template in TRAIN
@@ -168,7 +195,7 @@ print("Total template importance:", template_importance)
 PartialDependenceDisplay.from_estimator(
     rf,
     X_train,
-    ["time_since_last_notification_days"]
+    ["days_since_last_notification"]
 )
 plt.show()
 

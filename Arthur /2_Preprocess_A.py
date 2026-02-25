@@ -78,7 +78,7 @@ train = train.with_columns(
         lambda hist: 100.0 if (hist is None or len(hist) == 0)
         else float(min(item["n_days"] for item in hist)),
         return_dtype=pl.Float64
-    ).alias("time_since_last_notification_days")
+    ).alias("days_since_last_notification")
 )
 
 val = val.with_columns(
@@ -86,7 +86,7 @@ val = val.with_columns(
         lambda hist: 100.0 if (hist is None or len(hist) == 0)
         else float(min(item["n_days"] for item in hist)),
         return_dtype=pl.Float64
-    ).alias("time_since_last_notification_days")
+    ).alias("days_since_last_notification")
 )
 #%% 
 # **Template_freq_last_5**: The max count of any template in the last 5
@@ -120,27 +120,6 @@ val = val.with_columns(
 
 
 #%% 
-# Recency (Added from Alexander): days since *selected_template* was last shown (min n_days for matching template)
-def _days_since_shown(row):
-    tmpl = row["selected_template"]
-    hist = row["history"]
-    if hist is None or len(hist) == 0:
-        return 999.0
-    matching = [float(h["n_days"]) for h in hist if h["template"] == tmpl]
-    return float(min(matching)) if matching else 999.0
-
-train = train.with_columns(
-    pl.struct(["selected_template", "history"])
-      .map_elements(_days_since_shown, return_dtype=pl.Float64)
-      .alias("days_since_shown")
-)
-val = val.with_columns(
-    pl.struct(["selected_template", "history"])
-      .map_elements(_days_since_shown, return_dtype=pl.Float64)
-      .alias("days_since_shown")
-)
-
-#%% 
 ## Add day index 
 train = train.with_columns(
     (pl.col("datetime").floor().cast(pl.Int32) + 1).alias("day_index")
@@ -149,11 +128,6 @@ train = train.with_columns(
 val = val.with_columns(
     (pl.col("datetime").floor().cast(pl.Int32) + 1).alias("day_index")
 )
-
-#%% remove history
-train = train.drop(["history"])
-val   = val.drop(["history"])
-
 
 
 # %%
