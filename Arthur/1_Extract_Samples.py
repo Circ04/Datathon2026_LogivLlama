@@ -24,3 +24,12 @@ val_rsample.write_parquet("val_rsample_100k.parquet")
 #%
 
 
+#%%
+#  If you've written a single giant parquet:
+TEST_FULL_PARQUET = "test.parquet"
+test  = pl.read_parquet(TEST_FULL_PARQUET)
+#%%
+test_rsample= test.sample(n=7000000, seed=42 )
+#%%
+test_rsample.write_parquet("test_rsample_7mio.parquet")
+# %%
