@@ -18,7 +18,7 @@ print(train.shape, val.shape)
 
 
 #%% Recency helper (Added from Alexander): days since *selected_template* was last shown (min n_days for matching template)
-SENTINEL_RECENCY = 999.0
+SENTINEL_RECENCY = 100.0
 
 def _days_since_shown(row) -> float:
     tmpl = row["selected_template"]
@@ -45,7 +45,7 @@ needed = [
     "history_length",
     "hour_utc",
     "day_index",
-    "time_since_last_notification_days",
+    "days_since_last_notification",
     "max_template_count_last_5",
 ]
 print([c for c in needed if c not in train.columns])
@@ -56,6 +56,10 @@ print("val baseline:  ", val.select(pl.mean("session_end_completed")).item())
 
 train = add_recency(train, out_col="recency")
 val   = add_recency(val,   out_col="recency")
+
+# Keep a copy WITH history for IPS candidate evaluation later
+val_for_ips = val
+
 
 # now you may drop history safely (logged tables)
 train = train.drop(["history"])
@@ -90,7 +94,8 @@ y_train = train_m["session_end_completed"].to_pandas().astype(int)
 
 
 #%% 
-#%% Train Random Forest 
+#%% 
+# ________________RANDOM FOREST_______________ 
 
 
 rf = RandomForestClassifier(
@@ -115,7 +120,7 @@ print("Logged AUC:", roc_auc_score(y_val, pred_val))
 #%% ----- Greedy policy + IPS on VAL -----
 
 #%% create a row for each possible action (that would've been possible)
-val_id = val.with_row_index("row_id")
+val_id = val_for_ips.with_row_index("row_id")
 
 cand = (
     val_id
@@ -123,6 +128,11 @@ cand = (
     .rename({"eligible_templates": "candidate_template"})
     .with_columns(pl.col("candidate_template").alias("selected_template"))
 )
+# IMPORTANT: recompute recency for each candidate template
+cand = add_recency(cand, out_col="recency")
+
+# optional: drop history from candidates after recency is computed
+cand = cand.drop(["history"])
 
 #%% Make candidate rows look like training rows
 # one-hot encode candidate template
@@ -200,3 +210,15 @@ PartialDependenceDisplay.from_estimator(
 plt.show()
 
 # %%
+
+
+
+
+
+
+
+
+#%% 
+# ________________Logistic_______________ 
+
+
