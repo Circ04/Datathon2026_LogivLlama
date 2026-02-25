@@ -211,3 +211,129 @@ plt.show()
 
 # %%
 
+# ________________XGBOOST_______________
+
+from xgboost import XGBClassifier
+from xgboost.callback import EarlyStopping
+
+# ---- Train XGBoost on the same X_train / y_train ----
+pos_rate = 0.14
+scale_pos_weight = (1 - pos_rate) / pos_rate  # ~6.14
+
+xgb = XGBClassifier(
+    n_estimators=800,
+    learning_rate=0.05,
+    max_depth=6,
+    min_child_weight=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_lambda=1.0,
+    objective="binary:logistic",
+    eval_metric="auc",
+    n_jobs=-1,
+    random_state=42,
+    tree_method="hist",
+    scale_pos_weight=scale_pos_weight,
+)
+
+# Optional (recommended): early stopping using your logged validation set
+X_val_logged = val_m.drop(drop_cols).to_pandas()
+y_val = val_m["session_end_completed"].to_pandas().astype(int)
+
+xgb.fit(
+    X_train,
+    y_train,
+    eval_set=[(X_val_logged, y_val)],
+    verbose=False,
+)
+
+print("XGB trained.")
+
+# ---- Logged AUC (same as your RF evaluation) ----
+pred_val = xgb.predict_proba(X_val_logged)[:, 1]
+print("Logged AUC:", roc_auc_score(y_val, pred_val))
+
+
+#%% ----- Greedy policy + IPS on VAL (same logic; just swap model) -----
+
+val_id = val_for_ips.with_row_index("row_id")
+
+cand = (
+    val_id
+    .explode("eligible_templates")
+    .rename({"eligible_templates": "candidate_template"})
+    .with_columns(pl.col("candidate_template").alias("selected_template"))
+)
+
+# recompute recency for each candidate
+cand = add_recency(cand, out_col="recency")
+cand = cand.drop(["history"])
+
+cand_m = cand.to_dummies(columns=["selected_template"])
+
+# align candidate columns to train_m
+missing_cols = [c for c in train_m.columns if c not in cand_m.columns]
+for c in missing_cols:
+    cand_m = cand_m.with_columns(pl.lit(0).cast(pl.UInt8).alias(c))
+cand_m = cand_m.select(train_m.columns)
+
+# Predict reward for every candidate
+X_cand = cand_m.drop(drop_cols).to_pandas()
+cand = cand.with_columns(pl.Series("pred", xgb.predict_proba(X_cand)[:, 1]))
+
+# choose best per row
+chosen = (
+    cand.sort(["row_id", "pred"], descending=[False, True])
+        .group_by("row_id")
+        .agg([
+            pl.first("candidate_template").alias("model_choice"),
+            pl.first("pred").alias("model_pred"),
+        ])
+)
+
+# IPS evaluation
+val_eval = (
+    val_id.join(chosen, on="row_id", how="left")
+          .with_columns([
+              (pl.col("model_choice") == pl.col("selected_template")).alias("match"),
+              pl.col("eligible_templates").list.len().alias("pool_size"),
+          ])
+)
+
+ips = val_eval.select(
+    (pl.col("match").cast(pl.Float64)
+     * pl.col("session_end_completed").cast(pl.Float64)
+     * pl.col("pool_size").cast(pl.Float64)
+    ).mean()
+).item()
+
+baseline = val_eval.select(pl.mean("session_end_completed")).item()
+
+print("VAL baseline reward:", baseline)
+print("VAL IPS reward (XGB greedy):", ips)
+print("Relative lift:", (ips - baseline) / baseline)
+
+
+#%% Feature importance (similar to RF feature_importances_)
+importances = pd.Series(
+    xgb.feature_importances_,
+    index=X_train.columns
+).sort_values(ascending=False)
+
+print(importances.head(15))
+
+template_importance = importances[
+    importances.index.str.startswith("selected_template_")
+].sum()
+
+print("Total template importance:", template_importance)
+
+
+#%% Partial dependence (works with the sklearn-style wrapper)
+PartialDependenceDisplay.from_estimator(
+    xgb,
+    X_train,
+    ["days_since_last_notification"]
+)
+plt.show()
+# %%
